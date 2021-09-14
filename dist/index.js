@@ -230,15 +230,7 @@ var redisStore = function redisStore() {
       });
     },
     reset: function reset(cb) {
-      return new Promise(function (resolve, reject) {
-        if (!cb) {
-          cb = function cb(err, result) {
-            return err ? reject(err) : resolve(result);
-          };
-        }
-
-        redisCache.flushDb(handleResponse(cb));
-      });
+      return redisCache.flushDb();
     },
     keys: function keys() {
       var pattern = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '*';
