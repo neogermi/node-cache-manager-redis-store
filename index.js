@@ -148,8 +148,8 @@ const redisStore = (...args) => {
         if (!cb) {
           cb = (err, result) => (err ? reject(err) : resolve(result));
         }
-  
-        redisCache.flushdb(handleResponse(cb));
+
+        redisCache.flushDb(handleResponse(cb));
       })
     ),
     keys: (pattern = '*', cb) => (

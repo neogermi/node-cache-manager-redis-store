@@ -237,7 +237,7 @@ var redisStore = function redisStore() {
           };
         }
 
-        redisCache.flushdb(handleResponse(cb));
+        redisCache.flushDb(handleResponse(cb));
       });
     },
     keys: function keys() {
