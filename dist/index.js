@@ -91,7 +91,7 @@ var redisStore = function redisStore() {
         var val = JSON.stringify(value) || '"undefined"';
 
         if (ttl) {
-          redisCache.setex(key, ttl, val, handleResponse(cb));
+          redisCache.setEx(key, ttl, val, handleResponse(cb));
         } else {
           redisCache.set(key, val, handleResponse(cb));
         }
@@ -154,7 +154,7 @@ var redisStore = function redisStore() {
         if (ttl) {
           multi.exec(handleResponse(cb));
         } else {
-          redisCache.mset.apply(redisCache, [].concat(parsed, [handleResponse(cb)]));
+          redisCache.mSet.apply(redisCache, [].concat(parsed, [handleResponse(cb)]));
         }
       });
     },
@@ -198,7 +198,7 @@ var redisStore = function redisStore() {
           };
         }
 
-        redisCache.mget.apply(redisCache, [].concat(args, [handleResponse(cb, {
+        redisCache.mGet.apply(redisCache, [].concat(args, [handleResponse(cb, {
           parse: true
         })]));
       });

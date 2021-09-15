@@ -29,7 +29,7 @@ const redisStore = (...args) => {
         const val = JSON.stringify(value) || '"undefined"';
 
         if (ttl) {
-          redisCache.setex(key, ttl, val, handleResponse(cb));
+          redisCache.setEx(key, ttl, val, handleResponse(cb));
         } else {
           redisCache.set(key, val, handleResponse(cb));
         }
@@ -86,7 +86,7 @@ const redisStore = (...args) => {
         if (ttl) {
           multi.exec(handleResponse(cb));
         } else {
-          redisCache.mset.apply(redisCache, [...parsed, handleResponse(cb)]);
+          redisCache.mSet.apply(redisCache, [...parsed, handleResponse(cb)]);
         }
       });
     },
@@ -120,7 +120,7 @@ const redisStore = (...args) => {
           cb = (err, result) => (err ? reject(err) : resolve(result));
         }
 
-        redisCache.mget.apply(redisCache, [...args, handleResponse(cb, { parse: true })]);
+        redisCache.mGet.apply(redisCache, [...args, handleResponse(cb, { parse: true })]);
       })
     ),
     del: (...args) => (
