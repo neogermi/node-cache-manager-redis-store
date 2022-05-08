@@ -99,7 +99,7 @@ var redisStore = function redisStore() {
       return redisCache.del.apply(redisCache, arguments);
     },
     reset: function reset(cb) {
-      return redisCache.flushDb();
+      return redisCache.flushDb('SYNC');
     },
     keys: function keys() {
       var pattern = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '*';

@@ -40,7 +40,7 @@ const redisStore = (...args) => {
       return redisCache.del(...args);
     },
     reset: cb => {
-      return redisCache.flushDb();
+      return redisCache.flushDb('SYNC');
     },
     keys: (pattern = '*') => {
       return redisCache.keys(pattern);
