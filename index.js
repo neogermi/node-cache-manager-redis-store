@@ -1,210 +1,64 @@
-import Redis from 'redis';
+import { createClient } from 'redis';
 
 const redisStore = (...args) => {
-  const redisCache = args[0].client ? args[0].client : Redis.createClient(...args);
+  if (!args[0].client) {
+    throw new Error('No Redis client found');
+  }
+
+  const redisCache = args[0].client;
   const storeArgs = { ...args[0], ...redisCache.options };
 
   return {
     name: 'redis',
     getClient: () => redisCache,
-    set: function(key, value, options, cb) {
+    set: function(key, value, options = {}) {
       const self = this;
 
-      return new Promise((resolve, reject) => {
-        if (typeof options === 'function') {
-          cb = options;
-          options = {};
-        }
-        options = options || {};
+      if (!self.isCacheableValue(value)) {
+        return cb(new Error(`"${value}" is not a cacheable value`));
+      }
 
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
+      const ttl = (options.ttl || options.ttl === 0) ? options.ttl : storeArgs.ttl;
+      const val = JSON.stringify(value) || '"undefined"';
 
-        if (!self.isCacheableValue(value)) {
-          return cb(new Error(`"${value}" is not a cacheable value`));
-        }
-
-        const ttl = (options.ttl || options.ttl === 0) ? options.ttl : storeArgs.ttl;
-        const val = JSON.stringify(value) || '"undefined"';
-
-        if (ttl) {
-          redisCache.setEx(key, ttl, val, handleResponse(cb));
-        } else {
-          redisCache.set(key, val, handleResponse(cb));
-        }
-      })
+      if (ttl) {
+        return redisCache.setEx(key, ttl, val);
+      } else {
+        return redisCache.set(key, val);
+      }
     },
-    mset: function(...args) {
-      const self = this;
-
-      return new Promise((resolve, reject) => {
-        let cb;
-        let options = {};
-
-        if (typeof args[args.length - 1] === 'function') {
-          cb = args.pop();
-        }
-
-        if (args[args.length - 1] instanceof Object && args[args.length - 1].constructor === Object) {
-          options = args.pop();
-        }
-
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
-
-        const ttl = (options.ttl || options.ttl === 0) ? options.ttl : storeArgs.ttl;
-
-        let multi;
-        if (ttl) {
-          multi = redisCache.multi();
-        }
-
-        let key;
-        let value;
-        const parsed = [];
-        for (let i = 0; i < args.length; i += 2) {
-          key = args[i];
-          value = args[i + 1];
-
-          /**
-           * Make sure the value is cacheable
-           */
-          if (!self.isCacheableValue(value)) {
-            return cb(new Error(`"${value}" is not a cacheable value`));
-          }
-
-          value = JSON.stringify(value) || '"undefined"';
-          parsed.push(...[key, value]);
-
-          if (ttl) {
-            multi.setex(key, ttl, value);
-          }
-        }
-
-        if (ttl) {
-          multi.exec(handleResponse(cb));
-        } else {
-          redisCache.mSet.apply(redisCache, [...parsed, handleResponse(cb)]);
-        }
-      });
+    mset: function mset() {
+      throw new Error('not supported, please contribute');
     },
-    get: (key, options, cb) => (
-      new Promise((resolve, reject) => {
-        if (typeof options === 'function') {
-          cb = options;
-        }
-
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
-
-        redisCache.get(key, handleResponse(cb, { parse: true }));
-      })
-    ),
-    mget: (...args) => (
-      new Promise((resolve, reject) => {
-        let cb;
-        let options = {};
-
-        if (typeof args[args.length - 1] === 'function') {
-          cb = args.pop();
-        }
-
-        if (args[args.length - 1] instanceof Object && args[args.length - 1].constructor === Object) {
-          options = args.pop();
-        }
-
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
-
-        redisCache.mGet.apply(redisCache, [...args, handleResponse(cb, { parse: true })]);
-      })
-    ),
-    del: (...args) => (
-      new Promise((resolve, reject) => {
-        let cb;
-        let options = {};
-
-        if (typeof args[args.length - 1] === 'function') {
-          cb = args.pop();
-        }
-
-        if (args[args.length - 1] instanceof Object && args[args.length - 1].constructor === Object) {
-          options = args.pop();
-        }
-
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
-
-        redisCache.del.apply(redisCache, [...args, handleResponse(cb)]);
-      })
-    ),
-    reset: cb => (
-      new Promise((resolve, reject) => {
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
-
-        redisCache.flushDb(handleResponse(cb));
-      })
-    ),
-    keys: (pattern = '*', cb) => (
-      new Promise((resolve, reject) => {
-        if (typeof pattern === 'function') {
-          cb = pattern;
-          pattern = '*';
-        }
-
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
-
-        redisCache.keys(pattern, handleResponse(cb));
-      })
-    ),
-    ttl: (key, cb) => (
-      new Promise((resolve, reject) => {
-        if (!cb) {
-          cb = (err, result) => (err ? reject(err) : resolve(result));
-        }
-
-        redisCache.ttl(key, handleResponse(cb));
-      })
-    ),
+    get: (key, options = {}) => {
+      return redisCache.get(key).then(_parseResponse);
+    },
+    mget: (...args) => {
+      throw new Error('not supported, please contribute');
+    },
+    del: (...args) => {
+      return redisCache.del(...args);
+    },
+    reset: cb => {
+      return redisCache.flushDb();
+    },
+    keys: (pattern = '*') => {
+      return redisCache.keys(pattern);
+    },
+    ttl: (key, cb) => {
+      throw new Error('not supported, please contribute');
+    },
     isCacheableValue: storeArgs.is_cacheable_value || (value => value !== undefined && value !== null),
   };
 };
 
-function handleResponse(cb, opts = {}) {
-  return (err, result) => {
-    if (err) {
-      return cb && cb(err);
-    }
+function _parseResponse(result) {
+  const isMultiple = Array.isArray(result);
+  result = isMultiple ? result : [result];
 
-    if (opts.parse) {
-      let isMultiple = Array.isArray(result);
-      if (!isMultiple) {
-        result = [result];
-      }
+  result = result.map(JSON.parse);
 
-      result = result.map((_result) => {
-        try {
-          _result = JSON.parse(_result);
-        } catch (e) {
-          return cb && cb(e);
-        }
-        return _result;
-      });
-
-      result = isMultiple ? result : result[0];
-    }
-
-    return cb && cb(null, result);
-  };
+  return isMultiple ? result : result[0];
 }
 
 const methods = {
