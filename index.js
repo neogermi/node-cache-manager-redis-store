@@ -15,7 +15,7 @@ const redisStore = (...args) => {
       const self = this;
 
       if (!self.isCacheableValue(value)) {
-        return cb(new Error(`"${value}" is not a cacheable value`));
+        return; // ignore
       }
 
       const ttl = (options.ttl || options.ttl === 0) ? options.ttl : storeArgs.ttl;

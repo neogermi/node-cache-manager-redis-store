@@ -74,7 +74,7 @@ var redisStore = function redisStore() {
       var self = this;
 
       if (!self.isCacheableValue(value)) {
-        return cb(new Error("\"".concat(value, "\" is not a cacheable value")));
+        return; // ignore
       }
 
       var ttl = options.ttl || options.ttl === 0 ? options.ttl : storeArgs.ttl;
